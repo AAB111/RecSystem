@@ -1,6 +1,8 @@
 .env
 venv/
-data/
+sg_data/
 data_db/
 __pycache__/
-ETL/.ipynb_checkpoints
+.ipynb_checkpoints
+migrations/
+alembic.ini

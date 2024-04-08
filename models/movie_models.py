@@ -1,38 +1,53 @@
-from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, String, func, select, text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import DeclarativeBase,relationship
+from sqlalchemy import ForeignKey,  func, CheckConstraint
+from sqlalchemy.orm import Mapped,relationship, mapped_column
 from typing import Optional
-from enum import Enum
-from datetime import date,datetime
-
-class Base(DeclarativeBase):
-    pass
-
-class KnownForDepartment(Enum):
-    acting = 'Acting'
-    directing = 'Directing'
+from datetime import date
+import sys
+sys.path.append(r"/home/aleksey/Документы/RecSystem")
+from common_models import Base
 
 class Person(Base):
     __tablename__ = 'Person'
     id: Mapped[int] = mapped_column(primary_key=True,index=True)
     name: Mapped[str]
-    gender: Mapped[int] = mapped_column(choices = (0,1,2,3))
     popularity: Mapped[float]
-    known_for_department: Mapped[KnownForDepartment]
-    movies: Mapped[list['Movie']] = relationship(back_populates='movies',secondary='PersonMovie')
+    known_for_department: Mapped[Optional[str]]
+    crew: Mapped[list['Movie']] = relationship(back_populates='movies',secondary='Crew')
+    cast: Mapped[list['Movie']] = relationship(back_populates='movies',secondary='Cast')
+    __table_args__ = (
+        CheckConstraint('popularity >= 0', name='popularity_non_negative'),
+        CheckConstraint(func.length('name') <= 64, name='name_length_limit'),
+        CheckConstraint(func.length('known_for_department') <= 64, name='known_for_department_length_limit'),
+    )
 
-class PersonMovie(Base):
-    __tablename__ = 'PersonMovie'
+class Crew(Base):
+    __tablename__ = 'Crew'
     id: Mapped[int] = mapped_column(primary_key=True,index=True)
-    people_id: Mapped[int] = mapped_column(ForeignKey('Person.id',ondelete='RESTRICT'),index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey('Person.id',ondelete='RESTRICT'),index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
+    job: Mapped[str]
+    __table_args__ = (
+        CheckConstraint(func.length('job') <= 64, name='job_length_limit'),
+    )
+
+class Cast(Base):
+    __tablename__ = 'Cast'
+    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    person_id: Mapped[int] = mapped_column(ForeignKey('Person.id',ondelete='RESTRICT'),index=True)
+    movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
+    character: Mapped[str]
+    __table_args__ = (
+        CheckConstraint(func.length('character') <= 64, name='character_length_limit'),
+    )
 
 class Keyword(Base):
     __tablename__ = 'Keyword'
     id: Mapped[int] = mapped_column(primary_key=True,index=True)
-    keyword: Mapped[str] 
+    name: Mapped[str] 
     movies: Mapped[list['Movie']] = relationship(back_populates='movies',secondary='KeywordMovie')
+    __table_args__ = (
+        CheckConstraint(func.length('name') <= 64, name='name_length_limit'),
+    )
 
 class KeywordMovie(Base):
     __tablename__ = 'KeywordMovie'
@@ -45,31 +60,39 @@ class Movie(Base):
     id: Mapped[int] = mapped_column(primary_key=True,index=True)
     title: Mapped[str]
     tagline: Mapped[Optional[str]]
-    description: Mapped[Optional[str]]
+    overview: Mapped[Optional[str]]
     poster_path: Mapped[Optional[str]]
-    adult: Mapped[bool]
     original_language: Mapped[Optional[str]]
     release_date: Mapped[date]
     runtime: Mapped[Optional[int]]
-    budget: Mapped[Optional[int]]
-    revenue = Mapped[int]
     popularity: Mapped[float]
     vote_average = Mapped[float]
     vote_count = Mapped[int]
-    people: Mapped[list['Person']] = relationship(back_populates='people',secondary='PersonMovie')
+
+    crew: Mapped[list['Person']] = relationship(back_populates='people',secondary='Crew')
+    cast: Mapped[list['Person']] = relationship(back_populates='people',secondary='Cast')
     keywords: Mapped[list['Keyword']] = relationship(back_populates='keywords',secondary='KeywordMovie')
     genres: Mapped[list['Genre']] = relationship(back_populates='genres',secondary='GenreMovie')
     companies: Mapped[list['Company']] = relationship(back_populates='companies',secondary='CompanyMovie')
     users_watched: Mapped[list['User']] = relationship(back_populates='users_watched',secondary='MovieWatched')
     users_be_watching: Mapped[list['User']] = relationship(back_populates='users_be_watching',secondary='MovieBeWatching')
     users_negative: Mapped[list['User']] = relationship(back_populates='users_negative',secondary='MovieNegative')
+    users_eval: Mapped[list['User']] = relationship(back_populates='users_eval',secondary='MovieEvaluated')
+    __table_args__ = (
+        CheckConstraint('runtime >= 0', name='runtime_non_negative'),
+        CheckConstraint('popularity >= 0', name='popup_non_negative'),
+        CheckConstraint('vote_count >= 0', name='vote_count_non_negative'),
+        CheckConstraint('vote_average >= 0', name='vote_average_non_negative'),
+    )
 
 class Genre(Base):
     __tablename__ = 'Genre'
     id: Mapped[int] = mapped_column(primary_key=True,index=True)
     name: Mapped[str]
     movies: Mapped[list['Movie']] = relationship(back_populates='movies',secondary='GenreMovie')
-
+    __table_args__ = (
+        CheckConstraint(func.length('name') <= 64, name='name_length_limit'),
+    )
 class GenreMovie(Base):
     __tablename__ = 'GenreMovie'
     id: Mapped[int] = mapped_column(primary_key=True,index=True)
@@ -81,6 +104,9 @@ class Company(Base):
     id: Mapped[int] = mapped_column(primary_key=True,index=True)
     name: Mapped[str]
     movies: Mapped[list['Movie']] = relationship(back_populates='movies',secondary='CompanyMovie')
+    __table_args__ = (
+        CheckConstraint(func.length('name') <= 64, name='name_length_limit'),
+    )
 
 class CompanyMovie(Base):
     __tablename__ = 'CompanyMovie'
@@ -88,32 +114,3 @@ class CompanyMovie(Base):
     company_id: Mapped[int] = mapped_column(ForeignKey('Company.id',ondelete='RESTRICT'),index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
 
-class User(Base):
-    __tablename__ = 'User'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
-    date_birthday: Mapped[date]
-    movies_watched: Mapped[list['Movie']] = relationship(back_populates='movies_watched',secondary='MovieWatched')
-    movies_be_watching: Mapped[list['Movie']] = relationship(back_populates='movies_be_watching',secondary='MovieBeWatching')
-    movies_negative: Mapped[list['Movie']] = relationship(back_populates='movies_negative',secondary='MovieNegative')
-
-class MovieWatched(Base):
-    __tablename__ = 'MovieWatched'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
-    movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('User.id',ondelete='RESTRICT'),index=True)
-    rating: Mapped[Optional[float]]
-    datetime_watched: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
-
-class MovieBeWatching(Base):
-    __tablename__ = 'MovieBeWatching'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
-    movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('User.id',ondelete='RESTRICT'),index=True)
-    datetime_added: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
-
-class MovieNegative(Base):
-    __tablename__ = 'MovieNegative'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
-    movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey('User.id',ondelete='RESTRICT'),index=True)
-    datetime_added: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
