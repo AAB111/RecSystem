@@ -1,6 +1,6 @@
 import sys
 sys.path.append(r"/home/aleksey/Документы/RecSystem")
-sys.path.append(r"/home/aleksey/Документы/RecSystem/ETL")
+sys.path.append(r"/home/aleksey/Документы/RecSystem/scripts_etl")
 from tmdb import route, schema
 import asyncio
 import os
@@ -105,21 +105,21 @@ async def async_get_data_movie_by_id(handler,file_path_load,file_path_save):
         print(e)
 
 async def main():
-    parser = ParserTMDB(settings.API_KEY,count_sem=30)
+    # parser = ParserTMDB(settings.API_KEY,count_sem=30)
     spark = (SparkSession.builder
         .getOrCreate())
     try:
-        await async_get_movie_id_by_title_date(parser.async_get_movie_id, './sg_data/movies_filtered.csv', './sg_data/movies_id.csv')
-        await async_get_data_movie_by_id(parser.async_get_details_movie,'../sg_data/movies_id.csv','../sg_data/movies.json')
-        filter_movies(spark)
-        await async_get_data_movie_by_id(parser.async_get_keywords_movie,'../sg_data/end_filtered_movies_id.csv','../sg_data/keywords.json')
-        await async_get_data_movie_by_id(parser.async_get_credits_movie,'../sg_data/end_filtered_movies_id.csv','../sg_data/credits.json')
+        # await async_get_movie_id_by_title_date(parser.async_get_movie_id, './sg_data/movies_filtered.csv', './sg_data/movies_id.csv')
+        # await async_get_data_movie_by_id(parser.async_get_details_movie,'../sg_data/movies_id.csv','../sg_data/movies.json')
+        # filter_movies(spark)
+        # await async_get_data_movie_by_id(parser.async_get_keywords_movie,'../sg_data/end_filtered_movies_id.csv','../sg_data/keywords.json')
+        # await async_get_data_movie_by_id(parser.async_get_credits_movie,'../sg_data/end_filtered_movies_id.csv','../sg_data/credits.json')
 
-        transform_credits(spark)
-        transform_keywords(spark)
-        transform_movies(spark)
-        transform_company(spark)
-        transform_genre(spark)
+        # transform_credits(spark)
+        # transform_keywords(spark)
+        # transform_movies(spark)
+        # transform_company(spark)
+        # transform_genre(spark)
 
         schema_movie = StructType([
             StructField("id", IntegerType(), True),
@@ -144,11 +144,10 @@ async def main():
         load_data_to_db("../data_db/genreMovie", "GenreMovie",spark)
         load_data_to_db("../data_db/keywordMovie", "KeywordMovie",spark)
         load_data_to_db("../data_db/crew", "Crew",spark)
-    
     except Exception as e:
         print('Error',e)
     finally:
-        parser.session.close()
+        # parser.session.close()
         spark.stop()
         
 

@@ -16,8 +16,6 @@ def load_data_to_db(file_path, table_name,spark,schema = None):
             .option("password", settings.DB_PASS)
             .mode("append")
             .save())
-
         print("Data loaded successfully into table", table_name)
-
     except Exception as e:
         print("Error loading data:", str(e))

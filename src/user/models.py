@@ -3,11 +3,14 @@ from sqlalchemy.orm import Mapped,relationship, mapped_column
 import enum
 from sqlalchemy import Enum
 from datetime import datetime
-from common_models import Base
+
+import sys
+sys.path.append(r"/home/aleksey/Документы/RecSystem")
+from src.common.models import Base
 
 class User(Base):
     __tablename__ = 'User'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     name: Mapped[str]
     movies_watched: Mapped[list['Movie']] = relationship(back_populates='movies_watched',secondary='MovieWatched')
     movies_be_watching: Mapped[list['Movie']] = relationship(back_populates='movies_be_watching',secondary='MovieBeWatching')
@@ -21,21 +24,21 @@ class User(Base):
 
 class MovieWatched(Base):
     __tablename__ = 'MovieWatched'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('User.id',ondelete='RESTRICT'),index=True)
     datetime_watched: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
 
 class MovieBeWatching(Base):
     __tablename__ = 'MovieBeWatching'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('User.id',ondelete='RESTRICT'),index=True)
     datetime_added: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
 
 class MovieNegative(Base):
     __tablename__ = 'MovieNegative'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('User.id',ondelete='RESTRICT'),index=True)
     datetime_added: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
@@ -54,7 +57,7 @@ class Ratings(enum.Enum):
 
 class MovieEvaluated(Base):
     __tablename__ = 'MovieEvaluated'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     rating = Column(Enum(Ratings,inherit_schema=True),nullable=False)
     datetime_eval: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)

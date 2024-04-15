@@ -4,11 +4,11 @@ from typing import Optional
 from datetime import date
 import sys
 sys.path.append(r"/home/aleksey/Документы/RecSystem")
-from common_models import Base
+from src.common.models import Base
 
 class Person(Base):
     __tablename__ = 'Person'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     name: Mapped[str]
     popularity: Mapped[float]
     known_for_department: Mapped[Optional[str]]
@@ -22,7 +22,7 @@ class Person(Base):
 
 class Crew(Base):
     __tablename__ = 'Crew'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     person_id: Mapped[int] = mapped_column(ForeignKey('Person.id',ondelete='RESTRICT'),index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
     job: Mapped[str]
@@ -32,7 +32,7 @@ class Crew(Base):
 
 class Cast(Base):
     __tablename__ = 'Cast'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     person_id: Mapped[int] = mapped_column(ForeignKey('Person.id',ondelete='RESTRICT'),index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
     character: Mapped[str]
@@ -42,7 +42,7 @@ class Cast(Base):
 
 class Keyword(Base):
     __tablename__ = 'Keyword'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     name: Mapped[str] 
     movies: Mapped[list['Movie']] = relationship(back_populates='movies',secondary='KeywordMovie')
     __table_args__ = (
@@ -51,13 +51,13 @@ class Keyword(Base):
 
 class KeywordMovie(Base):
     __tablename__ = 'KeywordMovie'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     keyword_id: Mapped[int] = mapped_column(ForeignKey('Keyword.id',ondelete='RESTRICT'),index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
 
 class Movie(Base):
     __tablename__ = 'Movie'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     title: Mapped[str]
     tagline: Mapped[Optional[str]]
     overview: Mapped[Optional[str]]
@@ -87,21 +87,22 @@ class Movie(Base):
 
 class Genre(Base):
     __tablename__ = 'Genre'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     name: Mapped[str]
     movies: Mapped[list['Movie']] = relationship(back_populates='movies',secondary='GenreMovie')
     __table_args__ = (
         CheckConstraint(func.length('name') <= 64, name='name_length_limit'),
     )
+    
 class GenreMovie(Base):
     __tablename__ = 'GenreMovie'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     genre_id: Mapped[int] = mapped_column(ForeignKey('Genre.id',ondelete='RESTRICT'),index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
 
 class Company(Base):
     __tablename__ = 'Company'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     name: Mapped[str]
     movies: Mapped[list['Movie']] = relationship(back_populates='movies',secondary='CompanyMovie')
     __table_args__ = (
@@ -110,7 +111,7 @@ class Company(Base):
 
 class CompanyMovie(Base):
     __tablename__ = 'CompanyMovie'
-    id: Mapped[int] = mapped_column(primary_key=True,index=True)
+    id: Mapped[int] = mapped_column(primary_key=True,unique=True,index=True)
     company_id: Mapped[int] = mapped_column(ForeignKey('Company.id',ondelete='RESTRICT'),index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id',ondelete='RESTRICT'),index=True)
 
