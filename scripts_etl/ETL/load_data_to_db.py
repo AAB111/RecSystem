@@ -1,6 +1,8 @@
 from pyspark.sql import SparkSession
 import sys
-sys.path.append(r"/home/aleksey/Документы/RecSystem")
+from pathlib import Path
+config_path = Path('../../').resolve()
+sys.path.append(str(config_path))
 from config import settings
 
 

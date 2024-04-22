@@ -1,18 +1,20 @@
 import sys
-sys.path.append(r"/home/aleksey/Документы/RecSystem")
-sys.path.append(r"/home/aleksey/Документы/RecSystem/scripts_etl")
+from pathlib import Path
+config_path = Path('../../').resolve()
+sys.path.append(str(config_path))
+print(sys.path)
 from tmdb import route, schema
 import asyncio
-import os
-from config import settings
 import aiocsv
 import json
 import aiofiles
 import aiohttp
 import time
 from time import time
-from ETL.transform_data import filter_movies,transform_credits,transform_keywords,transform_company,transform_genre,transform_movies
-from ETL.load_data_to_db import load_data_to_db
+from config import settings
+print(settings.API_KEY)
+from transform_data import filter_movies,transform_credits,transform_keywords,transform_company,transform_genre,transform_movies
+from load_data_to_db import load_data_to_db
 from pyspark.sql.types import StructType,FloatType,StructField, StringType, IntegerType, DateType
 from pyspark.sql import SparkSession
 
