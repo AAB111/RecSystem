@@ -18,6 +18,12 @@ class UserDAL:
             await self.session.rollback()
             print("Error", e)
             return {'status': 'error'}
+        
+    async def check_user_id_exists(self, user_id: UUID) -> bool:
+        user = await self.session.execute(select(User).filter_by(id=user_id))
+        user = user.scalar()
+        return user is not None
+    
 class UserMovieDAL:
     def __init__(self,db_session: AsyncSession) -> None:
         self.session = db_session
@@ -35,11 +41,11 @@ class UserMovieDAL:
             if len(relationship) > 0:
                 for movie in relationship:
                     await self.session.refresh(movie, ['genres','cast', 'crew','companies'])
-                return relationship
-            return []
+            print(relationship)
+            return {'status':'success','data':relationship}
         except Exception as e:
             print(f"Error:", e)
-            return {'status': 'error'}
+            return {'status': 'error','data':None}
     
     async def add_movie_to_list(self, user_id: UUID, movie_id: int, relationship_name: str, **kwargs):
         try:
@@ -61,13 +67,12 @@ class UserMovieDAL:
             relationship_attr = getattr(user_class, relationship_name)
             secondary_table = relationship_attr.property.secondary
             condition = and_(secondary_table.c.user_id == user_id, secondary_table.c.movie_id == movie_id)
-            print('CONDITON',condition)
             update_expr = {getattr(secondary_table.c, column_name): value for column_name, value in kwargs.items()}
-            print('uuuu',update_expr)
             stmt = update(secondary_table).where(condition).values(update_expr)
-            await self.session.execute(stmt)
+            res = await self.session.execute(stmt)
+            update_count = res.rowcount
             await self.session.commit()
-            return {'status': 'success'}
+            return {'status': 'success', 'updated_rows': update_count}
         except Exception as e:
             await self.session.rollback()
             print(f"Ошибка при обновлении отношения {relationship_name} пользователя:", e)
@@ -87,10 +92,8 @@ class UserMovieDAL:
             
             res = await self.session.execute(stmt)
             deleted_count = res.rowcount
-            if deleted_count == 0:
-                raise IntegrityError(f"Movie {movie_id} not found or user not found in {relationship_name} list")
             await self.session.commit()
-            return {'status': 'success'}
+            return {'status': 'success', 'deleted_rows': deleted_count}
         except Exception as e:
             await self.session.rollback()
             print(f"Error:", e)

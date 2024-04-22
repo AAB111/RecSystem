@@ -55,8 +55,9 @@ class ContentBasedForUser(ContentBased):
 
         filtered_movie_neg = ColumnCombiner.combination_tto_characters_actors_directors(filtered_movie_neg.select('id','title','tagline','overview'),self.crew,self.cast,self.person,'combined_column')
         if (filtered_movie_neg.count() == 0):
-            # unique_id_right_sim = unique_id_right_sim.withColumn('user_id',F.lit(user_id))
-            return (all_user_movies_filtered,user_id,unique_id_right_sim.select(F.col('id_right').alias('movie_id')))
+            print(unique_id_right_sim.show())
+            print("NOT NEGATIVE")
+            return (all_user_movies_filtered.distinct(),user_id,unique_id_right_sim.select(F.col('id_right').alias('movie_id')).distinct())
         
         filtered_movie_neg_transformed = self.base_model.transform(filtered_movie_neg)
         sim_mat_neg = MatrixSim.matrix_sim_between_dfs(filtered_movie_neg_transformed,unique_id_right_sim.select(F.col('id_right').alias('id'),F.col('normalized_features_right').alias('normalized_features')))
@@ -66,9 +67,9 @@ class ContentBasedForUser(ContentBased):
         unique_id_right_neg = df_with_row_number.filter(F.col('row_number') == 1).drop('row_number')
         joined_df = similar_movies.join(unique_id_right_neg.select(F.col('id_right'),F.col('cos_sim').alias('cos_sim_neg')), on='id_right')
         filtered_df = joined_df.filter(F.col('cos_sim') > F.col('cos_sim_neg')).select('id_right','cos_sim')
-        # filtered_df = filtered_df.withColumn('user_id',F.lit(user_id))
-        # res_movie_id = [row['movie_id'] for row in filtered_df.select(F.col('id_right').alias('movie_id')).collect()]
-        return (all_user_movies_filtered,user_id,filtered_df.select(F.col('id_right').alias('movie_id')))
+        print(filtered_df.show())
+        print("NEGATIVE")
+        return (all_user_movies_filtered.distinct(),user_id,filtered_df.select(F.col('id_right').alias('movie_id')).distinct())
 
 
 class ContentBasedAuto(ContentBasedForUser):
@@ -83,6 +84,5 @@ class ContentBasedAuto(ContentBasedForUser):
         user_ids = [row['id'] for row in self.user.collect()]
         similar_movies_list = map(lambda user_id: self.recommend_sim(user_id,top_n_for_movie=10), user_ids)
 
-        # recommendations = reduce(lambda df1, df2: df1[1].unionAll(df2[1]), similar_movies_list)
         
         return list(similar_movies_list)

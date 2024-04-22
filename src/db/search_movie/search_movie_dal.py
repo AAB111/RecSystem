@@ -26,11 +26,11 @@ class HistorySearchMovieDAL:
             ]
             await self.session.execute(history_search_movie_result.insert().values(result_history))
             await self.session.commit()
-            return history_id
+            return {'status':'success','data':history_id}
         except IntegrityError as e:
             await self.session.rollback()
             print("Ошибка: ", e)
-    
+            return {'status': 'error','data':None}
     async def get_result_search_movie(self, history_id: int):
         try:
             history = await self.session.execute(
@@ -40,7 +40,8 @@ class HistorySearchMovieDAL:
             if (len(result_movies) > 0):
                 for movie in result_movies:
                     await self.session.refresh(movie, ['genres','cast', 'crew','companies'])
-                return result_movies
-            return []
+                return {'status':'success','data':result_movies}
+            return {'status': 'success','data':None}
         except Exception as e:
             print('Ошибка', e)
+            return {'status': 'error','data':None}

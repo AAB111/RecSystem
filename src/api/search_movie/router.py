@@ -7,25 +7,25 @@ from init_model import spark_init, top_n, base_model, data_storage
 from services.services import SearchMovie
 from db.search_movie.search_movie_dal import HistorySearchMovieDAL
 from api.search_movie.schemas import SearchMovieInput
-from fastapi import HTTPException, status
+from fastapi import status
+from fastapi.responses import JSONResponse
 router = APIRouter(
     prefix="/search_movie",
     tags=["search_movie"],
 )
 
-@router.post("/",response_model=List[MovieRelDTO])
+@router.post("/")
 async def search_movie(params:SearchMovieInput,session: AsyncSession = Depends(get_async_session)):
     try:
-        search_movie = SearchMovie(base_model,spark_init, data_storage,top_n)
-        history_id = await search_movie.search(**params.model_dump())
-        if history_id is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="History not found")
-        movies = await HistorySearchMovieDAL(session).get_result_search_movie(history_id=history_id)
-        output_movies = [
-            MovieRelDTO.model_validate(movie,from_attributes=True) 
-            for movie in movies
-        ]
-        return output_movies
+        search_movie = SearchMovie(base_model,spark_init, data_storage,session,top_n)
+        result = await search_movie.search(**params.model_dump())
+        if((result['data'] is not None) & (result['status'] == 'success')):
+            output_movies = [
+                MovieRelDTO.model_validate(movie,from_attributes=True) 
+                for movie in result['data']
+            ]
+            return output_movies
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
-        print('Ошибка',e)
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        print('Error',e)
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')

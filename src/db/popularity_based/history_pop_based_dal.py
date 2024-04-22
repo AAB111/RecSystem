@@ -28,10 +28,12 @@ class HistoryPopularityBasedDAL:
             .option("password", settings.DB_PASS)
             .mode("append")
             .save())
+            return {'status':'success'}
         except IntegrityError as e:
             await self.session.rollback()
             print("Ошибка: ", e)
-    
+            return {'status': 'error'}
+            
     async def get_last_history_pop_based(self):
         try:
             last_history_entry = await self.session.execute(
@@ -42,8 +44,8 @@ class HistoryPopularityBasedDAL:
                 if (len(history.result_movies) > 0):
                     for history_result in history.result_movies:
                         await self.session.refresh(history_result, ['genres','cast', 'crew','companies'])
-                    print(history.result_movies)
-                    return history.result_movies
-            return []
+                    return {'status':'success','data':history.result_movies}
+            return {'status':'success','data':None}
         except Exception as e:
             print('Ошибка', e)
+            return {'status': 'error','data':None}

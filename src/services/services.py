@@ -2,12 +2,15 @@ from pyspark.sql import SparkSession
 from config import settings
 from db.popularity_based.history_pop_based_dal import HistoryPopularityBasedDAL
 from db.content_based.history_content_based_dal import HistoryContentBasedDAL
-from db.database import async_session_maker
+from db.database import async_session_maker, get_async_session
+from db.user.user_dal import UserDAL
 from services.utils import ColumnCombiner, BaseModel, MatrixSim
 from services.popularity_based import PopularityBased
 from services.content_based import ContentBasedAuto
 from services.search_movie import SimilaritySearch
 from db.search_movie.search_movie_dal import HistorySearchMovieDAL
+from sqlalchemy.ext.asyncio import AsyncSession
+
 class SparkInitializer:
     def __init__(self):
         self.spark = None
@@ -89,12 +92,11 @@ class Recommender:
                 cast = self.reader.read_db_data('Cast')
                 sim_matrix = MatrixSim.matrix_sim_within_df(self.data_storage.movie_transformed)
                 content_based = ContentBasedAuto(self.base_model, sim_matrix, user, 
-                                                 movie, movie_be_watch, 
-                                                 movie_eval, movie_neg, 
-                                                 movie_watch, crew, 
-                                                 cast, person)
+                                                    movie, movie_be_watch, 
+                                                    movie_eval, movie_neg, 
+                                                    movie_watch, crew, 
+                                                    cast, person)
                 result_recommendations = content_based.recommend_auto()
-                print(result_recommendations)
                 for history in result_recommendations:
                     await HistoryContentBasedDAL(session).add_history_content_based(history[0], history[1], history[2])
                 print("Done CONTENT!")
@@ -102,21 +104,24 @@ class Recommender:
                 print(e)
 
 class SearchMovie:
-    def __init__(self, base_model:BaseModel,spark_initializer:SparkInitializer, data_storage: DataStorage,top_n = 20):
+    def __init__(self, base_model:BaseModel,spark_initializer:SparkInitializer, data_storage: DataStorage,session: AsyncSession,top_n = 20):
         self.base_model = base_model
         self.data_storage = data_storage
         self.top_n = top_n
         self.spark_init = spark_initializer
-
+        self.session = session
     async def search(self,overview,user_id):
-        async with async_session_maker() as session:
-            try:
-                search = SimilaritySearch(self.base_model,self.data_storage.movie_transformed)
-                data = [(overview,)]
-                df = self.spark_init.get_spark().createDataFrame(data, [self.base_model.transform_column])
-                sim_movies = search.search(df,self.top_n)
-                hs = HistorySearchMovieDAL(session)
-                history_id = await hs.add_history_search_movie(input_search=overview, user_id=user_id, movie_id_res_list=sim_movies)
-                return history_id
-            except Exception as e:
-                print(e)
+        try:
+            if await UserDAL(self.session).check_user_id_exists(user_id) == False:
+                return {'status':'error','data':None}
+            search = SimilaritySearch(self.base_model,self.data_storage.movie_transformed)
+            data = [(overview,)]
+            df = self.spark_init.get_spark().createDataFrame(data, [self.base_model.transform_column])
+            sim_movies = search.search(df,self.top_n)
+            hs = HistorySearchMovieDAL(self.session)
+            result = await hs.add_history_search_movie(input_search=overview, user_id=user_id, movie_id_res_list=sim_movies)
+            result = await hs.get_result_search_movie(history_id=result['data'])
+            return result
+        except Exception as e:
+            print(e)
+            return {'status':'error','data':None}

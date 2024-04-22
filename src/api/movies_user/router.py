@@ -3,7 +3,6 @@ from typing import List
 from api.schemas import MovieRelDTO
 from db.database import get_async_session
 from sqlalchemy.ext.asyncio import AsyncSession
-from api.schemas import ContentForUserInput
 from api.movies_user.schemas import MovieUserInput, ReviewUpdate, MovieUserReviewInput,MovieUserRatingInput
 from db.user.user_dal import UserMovieDAL
 from fastapi import status 
@@ -22,36 +21,40 @@ async def add_watched_movie(params:MovieUserInput,session: AsyncSession = Depend
         if status_res['status'] == 'success':
             return JSONResponse(status_code=status.HTTP_200_OK, content="Watched add")
         else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Watched not add")
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
         print('Error',e)
         raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
     
-@router.get("/watched",response_model=List[MovieRelDTO])
+@router.get("/watched")
 async def get_movies_watched(user_id:UUID,session: AsyncSession = Depends(get_async_session)):
     try:
-        print('user_id',user_id)
-        movies = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='movies_watched')
-        output_movies = [
-            MovieRelDTO.model_validate(movie,from_attributes=True) 
-            for movie in movies
-        ]
-        return output_movies
+        result = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='movies_watched')
+        print('result',result)
+        if (result['status'] == 'success'):
+            output_movies = [
+                MovieRelDTO.model_validate(movie,from_attributes=True) 
+                for movie in result['data']
+            ]
+            print('output_movies',output_movies)
+            return output_movies
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
     
 @router.delete("/watched")
 async def delete_watched_movie(params:MovieUserInput,session: AsyncSession = Depends(get_async_session)):
     try:
         status_res = await UserMovieDAL(session).delete_movie_from_list(params.user_id,params.movie_id,'movies_watched')
         if status_res['status'] == 'success':
+            if status_res['deleted_rows'] == 0:
+                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
             return JSONResponse(status_code=status.HTTP_200_OK, content="Watched delete")
-        else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Watched not delete")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
 @router.post("/be_watching")
 async def add_be_watching_movie(params:MovieUserInput,session: AsyncSession = Depends(get_async_session)):
@@ -60,35 +63,38 @@ async def add_be_watching_movie(params:MovieUserInput,session: AsyncSession = De
         if status_res['status'] == 'success':
             return JSONResponse(status_code=status.HTTP_200_OK, content="Be watching add")
         else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Be watching not add")
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
-@router.get("/be_watching",response_model=List[MovieRelDTO])
+@router.get("/be_watching")
 async def get_movies_watched(user_id:UUID,session: AsyncSession = Depends(get_async_session)):
     try:
-        movies = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='movies_be_watching')
-        output_movies = [
-            MovieRelDTO.model_validate(movie,from_attributes=True) 
-            for movie in movies
-        ]
-        return output_movies
+        result = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='movies_be_watching')
+        if (result['status'] == 'success'):
+            output_movies = [
+                MovieRelDTO.model_validate(movie,from_attributes=True) 
+                for movie in result['data']
+            ]
+            return output_movies
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
 @router.delete("/be_watching")
 async def delete_be_watching_movie(params:MovieUserInput,session: AsyncSession = Depends(get_async_session)):
     try:
         status_res = await UserMovieDAL(session).delete_movie_from_list(params.user_id,params.movie_id,'movies_be_watching')
         if status_res['status'] == 'success':
+            if status_res['deleted_rows'] == 0:
+                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
             return JSONResponse(status_code=status.HTTP_200_OK, content="Be watching delete")
-        else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Be watching not delete")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
 @router.post("/negative")
 async def add_negative_movie(params:MovieUserInput,session: AsyncSession = Depends(get_async_session)):
@@ -97,35 +103,38 @@ async def add_negative_movie(params:MovieUserInput,session: AsyncSession = Depen
         if status_res['status'] == 'success':
             return JSONResponse(status_code=status.HTTP_200_OK, content="Negative add")
         else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Negative not add")
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
-@router.get("/negative",response_model=List[MovieRelDTO])
+@router.get("/negative")
 async def get_movies_watched(user_id:UUID,session: AsyncSession = Depends(get_async_session)):
     try:
-        movies = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='movies_negative')
-        output_movies = [
-            MovieRelDTO.model_validate(movie,from_attributes=True) 
-            for movie in movies
-        ]
-        return output_movies
+        result = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='movies_negative')
+        if (result['status'] == 'success'):
+            output_movies = [
+                MovieRelDTO.model_validate(movie,from_attributes=True) 
+                for movie in result['data']
+            ]
+            return output_movies
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
-
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+    
 @router.delete("/negative")
 async def delete_negative_movie(params:MovieUserInput,session: AsyncSession = Depends(get_async_session)):
     try:
         status_res = await UserMovieDAL(session).delete_movie_from_list(params.user_id,params.movie_id,'movies_negative')
         if status_res['status'] == 'success':
+            if status_res['deleted_rows'] == 0:
+                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
             return JSONResponse(status_code=status.HTTP_200_OK, content="Negative delete")
-        else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Negative not delete")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
 @router.post("/evaluated")
 async def add_evaluated_movie(params:MovieUserRatingInput,session: AsyncSession = Depends(get_async_session)):
@@ -134,37 +143,40 @@ async def add_evaluated_movie(params:MovieUserRatingInput,session: AsyncSession 
         if status_res['status'] == 'success':
             return JSONResponse(status_code=status.HTTP_200_OK, content="Rating add")
         else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Rating not add")
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
 @router.get("/evaluated",response_model=List[MovieRelDTO])
 async def get_movies_watched(user_id:UUID,session: AsyncSession = Depends(get_async_session)):
     try:
-        movies = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='movies_evaluated')
-        output_movies = [
-            MovieRelDTO.model_validate(movie,from_attributes=True) 
-            for movie in movies
-        ]
-        return output_movies
+        result = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='movies_evaluated')
+        if (result['status'] == 'success'):
+            output_movies = [
+                MovieRelDTO.model_validate(movie,from_attributes=True) 
+                for movie in result['data']
+            ]
+            return output_movies
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
 @router.delete("/evaluated")
 async def delete_evaluated_movie(params:MovieUserInput,session: AsyncSession = Depends(get_async_session)):
     try:
         status_res = await UserMovieDAL(session).delete_movie_from_list(params.user_id,params.movie_id,'movies_evaluated')
         if status_res['status'] == 'success':
+            if status_res['deleted_rows'] == 0:
+                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
             return JSONResponse(status_code=status.HTTP_200_OK, content="Rating delete")
-        else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Rating not delete")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
-@router.put("/evaluated")
+@router.patch("/evaluated")
 async def update_evaluated_movie(params:MovieUserRatingInput,session: AsyncSession = Depends(get_async_session)):
     try:
         values_to_update = {}
@@ -175,11 +187,14 @@ async def update_evaluated_movie(params:MovieUserRatingInput,session: AsyncSessi
         if (len(values_to_update) > 0):
             status_res = await UserMovieDAL(session).update_movie_from_list(params.user_id,params.movie_id,'movies_evaluated',**values_to_update)
             if status_res['status'] == 'success':
+                if status_res['updated_rows'] == 0:
+                    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
                 return JSONResponse(status_code=status.HTTP_200_OK, content="Rating update")
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Rating not update")
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not require field")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
 @router.post("/review")
 async def add_review_movie(params:MovieUserReviewInput,session: AsyncSession = Depends(get_async_session)):
@@ -188,25 +203,27 @@ async def add_review_movie(params:MovieUserReviewInput,session: AsyncSession = D
         if status_res['status'] == 'success':
             return JSONResponse(status_code=status.HTTP_200_OK, content="Review add")
         else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST,content="Review not add")
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST,content="Not valid data")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
 
 @router.get("/review",response_model=List[MovieRelDTO])
 async def get_movies_reviews(user_id:UUID,session: AsyncSession = Depends(get_async_session)):
     try:
-        movies = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='reviews')
-        output_movies = [
-            MovieRelDTO.model_validate(movie,from_attributes=True) 
-            for movie in movies
-        ]
-        return output_movies
+        result = await UserMovieDAL(session).get_movies_user(user_id=user_id,relationship_name='reviews')
+        if (result['status'] == 'success'):
+            output_movies = [
+                MovieRelDTO.model_validate(movie,from_attributes=True) 
+                for movie in result['data']
+            ]
+            return output_movies
+        return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
     
-@router.put('/review')
+@router.patch('/review')
 async def update_review_movie(params:ReviewUpdate,session: AsyncSession = Depends(get_async_session)):
     try:
         values_to_update = {}
@@ -217,20 +234,24 @@ async def update_review_movie(params:ReviewUpdate,session: AsyncSession = Depend
         if (len(values_to_update) > 0):
             status_res = await UserMovieDAL(session).update_movie_from_list(params.user_id,params.movie_id,'reviews',**values_to_update)
             if status_res['status'] == 'success':
+                if status_res['updated_rows'] == 0:
+                    return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
                 return JSONResponse(status_code=status.HTTP_200_OK, content="Review update")
-        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Review not update")
+            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not require field")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
     
 @router.delete('/review')
 async def delete_review_movie(params:MovieUserInput,session: AsyncSession = Depends(get_async_session)):
     try:
         status_res = await UserMovieDAL(session).delete_movie_from_list(params.user_id,params.movie_id,'reviews')
         if status_res['status'] == 'success':
+            if (status_res['deleted_rows'] == 0):
+                return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
             return JSONResponse(status_code=status.HTTP_200_OK, content="Review delete")
-        else:
-            return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Review not delete")
+        return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
     except Exception as e:
         print('Error',e)
-        raise JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')

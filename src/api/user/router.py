@@ -20,4 +20,4 @@ async def create_user(user:UserPostDTO,session: AsyncSession = Depends(get_async
         return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="User not add")
     except Exception as e:
         print('Error',e)
-        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,content='Internal server error')

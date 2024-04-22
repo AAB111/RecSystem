@@ -8,7 +8,6 @@ class SimilaritySearch:
     def search(self,description,top_n = 20):
         transformed_single_row_df = self.base_model.transform(description)
         transformed_df = MatrixSim.matrix_sim_between_dfs(transformed_single_row_df,self.transformed_compare_df)
-        
         similar_movies = transformed_df.orderBy(F.desc('cos_sim')).limit(top_n).select(F.col('id_right').alias('movie_id'))
         return similar_movies
     

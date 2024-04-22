@@ -1,24 +1,35 @@
 from pyspark.sql.types import StringType, DoubleType
 from pyspark.sql import Window
 import pyspark.sql.functions as F
-from pyspark.ml import Pipeline
+from pyspark.ml import Pipeline, PipelineModel
 from pyspark.ml.feature import RegexTokenizer, StopWordsRemover, HashingTF, IDF, Normalizer
 class BaseModel:
-    def __init__(self, transform_column='combined_column'):
+    def __init__(self, transform_column='combined_column',model_path='model'):
         self.transform_column = transform_column
+        self.model_path = model_path
         self.tokenizer = RegexTokenizer(inputCol=transform_column, outputCol="words", pattern="\\W")
         self.remover = StopWordsRemover(inputCol="words", outputCol="filtered_words")
         self.hashing_tf = HashingTF(inputCol="filtered_words", outputCol="raw_features")
         self.idf = IDF(inputCol="raw_features", outputCol="features")
         self.normalizer = Normalizer(inputCol="features", outputCol="normalized_features")
         self.pipeline = Pipeline(stages=[self.tokenizer, self.remover, self.hashing_tf, self.idf, self.normalizer])
+        self.model = None
+        self.load_model()
     
     def fit_transform(self, dataframe):
+        if self.model is not None:
+            return self.transform(dataframe)
         self.model = self.pipeline.fit(dataframe)
+        self.model.save(self.model_path)
         return self.transform(dataframe)
     
     def transform(self, dataframe):
+        if self.model is None:
+            self.load_model()
         return self.model.transform(dataframe).drop('filtered_words', 'raw_features', 'words', 'features')
+    
+    def load_model(self):
+        self.model = PipelineModel.load(self.model_path)
 
 class ColumnCombiner:
     @staticmethod
