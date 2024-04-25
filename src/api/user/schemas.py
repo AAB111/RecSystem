@@ -1,7 +1,7 @@
 from pydantic import BaseModel
 
 class UserPostDTO(BaseModel):
-    name: str
+    id: int
 
 class UserGetDTO(UserPostDTO):
     pass

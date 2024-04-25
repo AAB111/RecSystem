@@ -4,5 +4,6 @@ sg_data/
 data_db/
 __pycache__/
 .ipynb_checkpoints
-alembic/
+migrations/
 model/
+alembic.ini

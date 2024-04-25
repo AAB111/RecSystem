@@ -1,13 +1,17 @@
 from uuid import UUID
 from pydantic import BaseModel
-from db.user.models import Ratings, TypeReview
+from src.db.types.types import Ratings, TypeReview
 from typing import Optional
+
+
 class MovieUserInput(BaseModel):
-    user_id: UUID
+    user_id: int
     movie_id: int
+
 
 class MovieUserRatingInput(MovieUserInput):
     rating: Ratings
+
 
 class MovieUserReviewInput(MovieUserInput):
     title: str

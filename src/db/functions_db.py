@@ -1,5 +1,5 @@
-from sqlalchemy import text
 from sqlalchemy.sql import DDL
+
 
 def create_update_latest_activity_user():
     ddl_function = DDL("""
@@ -11,6 +11,7 @@ def create_update_latest_activity_user():
     $$ LANGUAGE plpgsql;
     """)
     return ddl_function
+
 
 def create_update_latest_activity_review():
     ddl_function = DDL("""

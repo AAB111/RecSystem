@@ -6,7 +6,7 @@ sys.path.append(str(config_path))
 from config import settings
 
 
-def load_data_to_db(file_path, table_name,spark,schema = None):
+def load_data_to_db(file_path, table_name, spark, schema=None):
     try:
         df = spark.read.json(file_path,schema)
         (df.write

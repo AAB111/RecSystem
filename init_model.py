@@ -1,5 +1,5 @@
-from services.services import DataStorage, Reader, SparkInitializer
-from services.utils import BaseModel
+from src.services.services import DataStorage, Reader, SparkInitializer
+from src.services.utils import BaseModel
 
 
 top_n = 20

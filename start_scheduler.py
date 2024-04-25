@@ -1,16 +1,11 @@
 from init_model import spark_init, top_n, base_model, data_storage,reader
 import asyncio
-from db.user.models import User
-from db.movie.models import Movie
-from db.popularity_based.models import HistoryPopularityBased
-from db.content_based.models import HistoryContentBased
-from db.search_movie.models import HistorySearchMovie
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.executors.pool import ProcessPoolExecutor
 import threading
-from services.services import Recommender
+from src.services.services import Recommender
 
-recommender = Recommender(base_model, data_storage,reader,top_n)
+recommender = Recommender(base_model, data_storage, reader, top_n)
 
 def print_current_thread():
     current_thread = threading.current_thread()

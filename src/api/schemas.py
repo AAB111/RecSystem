@@ -1,16 +1,7 @@
 from uuid import UUID
 from pydantic import BaseModel
 from datetime import date
-class PersonPostDTO(BaseModel):
-    id: int
-    name: str
-    known_for_department: str
 
-class CrewGetDTO(PersonPostDTO):
-    pass
-
-class CastGetDTO(PersonPostDTO):
-    pass
 
 class MoviePostDTO(BaseModel):
     id: int
@@ -18,32 +9,35 @@ class MoviePostDTO(BaseModel):
     tagline: str
     overview: str
 
-class GenrePostDTO(BaseModel):
+
+class Genre(BaseModel):
+    id: int
     name: str
 
-class GenreGetDTO(GenrePostDTO):
-    id: int
 
-class CompanyPostDTO(BaseModel):
+class GenreMovieGetDTO(BaseModel):
+    genre: Genre
+
+
+class Company(BaseModel):
+    id: int
     name: str
 
-class CompanyGetDTO(CompanyPostDTO):
-    id: int
+
+class CompanyMovieGetDTO(BaseModel):
+    company: Company
+
 
 class MovieGetDTO(MoviePostDTO):
-    id: int
-    title: str
-    tagline: str
-    overview: str
     vote_average: float
     release_date: date
     poster_path: str
 
+
 class MovieRelDTO(MovieGetDTO):
-    genres: list['GenreGetDTO']
-    # crew: list['CrewGetDTO']
-    # cast: list['CastGetDTO']
-    companies: list[CompanyGetDTO]
+    genres: list['GenreMovieGetDTO']
+    companies: list[CompanyMovieGetDTO]
+
 
 class ContentForUserInput(BaseModel):
-    user_id: UUID
+    user_id: int
