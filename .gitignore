@@ -8,3 +8,7 @@ migrations/
 model/
 alembic.ini
 .idea/
+translate_data/
+jup.ipynb
+model_content/
+model_search/

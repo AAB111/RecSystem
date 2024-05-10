@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from src.db.entities.models import (Movie, Person, User, HistoryContentBased, HistorySearchMovie,
-                                        HistoryPopularityBased)
+                                        HistoryPopularityBased, HistoryContentBasedMovie)
     from src.db.reference.models import Keyword, Genre, Company
 
 
@@ -54,6 +54,7 @@ class MovieEvaluated(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey('User.id', ondelete='RESTRICT'), index=True)
     rating: Mapped[Ratings] = mapped_column(Enum(Ratings, inherit_schema=True), nullable=False)
     datetime_added: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
+    latest_change: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
     user: Mapped['User'] = relationship(back_populates='movies_evaluated')
     movie: Mapped['Movie'] = relationship(back_populates='users_evaluated')
 
@@ -65,7 +66,7 @@ class Review(Base):
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id', ondelete='RESTRICT'), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey('User.id', ondelete='RESTRICT'), index=True)
     review: Mapped[str] = mapped_column(String, nullable=False)
-    title: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String, nullable=False)
     type_review: Mapped[TypeReview] = mapped_column(Enum(TypeReview, inherit_schema=True), nullable=False)
     datetime_added: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
     latest_change: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
@@ -133,7 +134,7 @@ class Crew(Base):
     id: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
     person_id: Mapped[int] = mapped_column(ForeignKey('Person.id', ondelete='RESTRICT'), index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id', ondelete='RESTRICT'), index=True)
-    job: Mapped[str] = mapped_column(String, nullable=False)
+    job: Mapped[str] = mapped_column(String, nullable=True)
     person: Mapped['Person'] = relationship(back_populates='movies_crew')
     movie: Mapped['Movie'] = relationship(back_populates='crew')
 
@@ -144,7 +145,7 @@ class Cast(Base):
     id: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
     person_id: Mapped[int] = mapped_column(ForeignKey('Person.id', ondelete='RESTRICT'), index=True)
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id', ondelete='RESTRICT'), index=True)
-    character: Mapped[str] = mapped_column(String, nullable=False)
+    character: Mapped[str] = mapped_column(String, nullable=True)
     person: Mapped['Person'] = relationship(back_populates='movies_cast')
     movie: Mapped['Movie'] = relationship(back_populates='cast')
 
@@ -165,3 +166,14 @@ class CompanyMovie(Base):
     movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id', ondelete='RESTRICT'), index=True)
     company: Mapped['Company'] = relationship(back_populates='movies_company')
     movie: Mapped['Movie'] = relationship(back_populates='companies')
+
+
+class HistoryContentBasedMovieResult(Base):
+    __tablename__ = 'HistoryContentBasedMovieResult'
+    id: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
+    movie_id: Mapped[int] = mapped_column(ForeignKey('Movie.id', ondelete='RESTRICT'), index=True)
+    movie_id_input: Mapped[int] = mapped_column(ForeignKey('HistoryContentBasedMovie.movie_id_input',
+                                                       ondelete='RESTRICT'), index=True)
+    cos_sim: Mapped[float] = mapped_column()
+    history: Mapped['HistoryContentBasedMovie'] = relationship(back_populates='movies_history_res')
+    movie: Mapped['Movie'] = relationship(back_populates='histories_content_movie_res')

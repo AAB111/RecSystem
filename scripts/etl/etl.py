@@ -1,5 +1,3 @@
-import sys
-print(sys.path)
 from config import settings
 from tmdb import route
 import asyncio
@@ -10,7 +8,8 @@ import aiohttp
 import time
 from time import time
 from scripts.etl.load_data_to_db import load_data_to_db
-from scripts.etl.transform_data import transform_credits, transform_keywords, transform_movies, transform_company, transform_genre
+from scripts.etl.transform_data import (transform_credits, transform_keywords, transform_movies, transform_company,
+                                        transform_genre)
 from pyspark.sql.types import StructType, FloatType, StructField, StringType, IntegerType, DateType
 from pyspark.sql import SparkSession
 
@@ -126,30 +125,32 @@ async def main():
         # transform_movies(spark)
         # transform_company(spark)
         # transform_genre(spark)
-
-        schema_movie = StructType([
-            StructField("id", IntegerType(), True),
-            StructField("title", StringType(), True),
-            StructField("tagline", StringType(), True),
-            StructField("overview", StringType(), True),
-            StructField("poster_path", StringType(), True),
-            StructField("original_language", StringType(), True),
-            StructField("release_date", DateType(), True),
-            StructField("runtime", IntegerType(), True),
-            StructField("popularity", FloatType(), True),
-            StructField("vote_average", FloatType(), True),
-            StructField("vote_count", IntegerType(), True)
-        ])
-        load_data_to_db("./scripts/data_db/movie", "Movie", spark, schema=schema_movie)
-        load_data_to_db("./scripts/data_db/genre", "Genre", spark)
-        load_data_to_db("./scripts/data_db/company", "Company", spark)
-        load_data_to_db("./scripts/data_db/person", "Person", spark)
-        load_data_to_db("./scripts/data_db/keyword", "Keyword", spark)
-        load_data_to_db("./scripts/data_db/cast", "Cast", spark)
-        load_data_to_db("./scripts/data_db/companyMovie", "CompanyMovie", spark)
-        load_data_to_db("./scripts/data_db/genreMovie", "GenreMovie", spark)
-        load_data_to_db("./scripts/data_db/keywordMovie", "KeywordMovie", spark)
-        load_data_to_db("./scripts/data_db/crew", "Crew", spark)
+            
+        # schema_movie = StructType([
+        #     StructField("id", IntegerType(), True),
+        #     StructField("title", StringType(), True),
+        #     StructField("tagline", StringType(), True),
+        #     StructField("overview", StringType(), True),
+        #     StructField("poster_path", StringType(), True),
+        #     StructField("original_language", StringType(), True),
+        #     StructField("release_date", DateType(), True),
+        #     StructField("runtime", IntegerType(), True),
+        #     StructField("popularity", FloatType(), True),
+        #     StructField("vote_average", FloatType(), True),
+        #     StructField("vote_count", IntegerType(), True)
+        # ])
+        df = spark.read.json("./scripts/data_db/movie")
+        df.toPandas().to_csv('./scripts/data_db/movie.csv', index=False)
+        # load_data_to_db("./scripts/data_db/movie", "Movie", spark, schema=schema_movie)
+        # load_data_to_db("./scripts/data_db/genre", "Genre", spark)
+        # load_data_to_db("./scripts/data_db/company", "Company", spark)
+        # load_data_to_db("./scripts/data_db/person", "Person", spark)
+        # load_data_to_db("./scripts/data_db/keyword", "Keyword", spark)
+        # load_data_to_db("./scripts/data_db/cast", "Cast", spark)
+        # load_data_to_db("./scripts/data_db/companyMovie", "CompanyMovie", spark)
+        # load_data_to_db("./scripts/data_db/genreMovie", "GenreMovie", spark)
+        # load_data_to_db("./scripts/data_db/keywordMovie", "KeywordMovie", spark)
+        # load_data_to_db("./scripts/data_db/crew", "Crew", spark)
     except Exception as e:
         print('Error', e)
     finally:

@@ -1,187 +1,106 @@
-from pyspark.sql.types import StringType, DoubleType
+from pyspark.ml.param.shared import HasInputCol, HasOutputCol
+from pyspark.ml.util import DefaultParamsReadable, \
+    DefaultParamsWritable
+from pyspark.sql.types import StringType, DoubleType, ArrayType
 from pyspark.sql import Window
 import pyspark.sql.functions as F
-from pyspark.ml import Pipeline, PipelineModel
-from pyspark.ml.feature import RegexTokenizer, StopWordsRemover, HashingTF, IDF, Normalizer
+from pyspark.ml import Pipeline, PipelineModel, Transformer
+from pyspark.ml.feature import StopWordsRemover, HashingTF, IDF, Normalizer, NGram, RegexTokenizer
+from pymystem3 import Mystem
+
+
+class MystemLemmatizer(Transformer, HasInputCol, HasOutputCol, DefaultParamsReadable, DefaultParamsWritable):
+    def __init__(self, inputCol=None, outputCol=None):
+        super(MystemLemmatizer, self).__init__()
+        self._setDefault(inputCol=inputCol, outputCol=outputCol)
+        self.setParams(inputCol=inputCol, outputCol=outputCol)
+
+    def setParams(self, inputCol=None, outputCol=None):
+        return self._set(inputCol=inputCol, outputCol=outputCol)
+
+    def _transform(self, dataset):
+        mystem = Mystem()
+
+        def lemmatize_text(text):
+            return mystem.lemmatize(text)
+
+        lemmatize_udf = F.udf(lemmatize_text, ArrayType(StringType()))
+        return dataset.withColumn(self.getOutputCol(), lemmatize_udf(F.col(self.getInputCol())))
 
 
 class BaseModel:
-    def __init__(self, transform_column='combined_column', model_path='model'):
+    def __init__(self, spark_init, transform_column='combined_column', n=2):
+        self.spark = spark_init.get_spark()
         self.transform_column = transform_column
-        self.model_path = model_path
-        self.tokenizer = RegexTokenizer(inputCol=transform_column, outputCol="words", pattern="\\W")
-        self.remover = StopWordsRemover(inputCol="words", outputCol="filtered_words")
-        self.hashing_tf = HashingTF(inputCol="filtered_words", outputCol="raw_features")
-        self.idf = IDF(inputCol="raw_features", outputCol="features")
+
+        russian_stop_words = StopWordsRemover.loadDefaultStopWords('russian')
+        # self.lemmatizer = MystemLemmatizer(inputCol=transform_column, outputCol="lemmatized_words")
+        self.tokenizer = RegexTokenizer(inputCol=transform_column, outputCol="lemmatized_words")
+        self.remover = StopWordsRemover(inputCol="lemmatized_words", outputCol="filtered_words", caseSensitive=True,
+                                        stopWords=russian_stop_words)
+        self.ngram = NGram(n=n, inputCol="filtered_words", outputCol="ngrams")
+        self.hashing_tf = HashingTF(inputCol="ngrams", outputCol="raw_features", numFeatures=2**14)
+        self.idf = IDF(inputCol="raw_features", outputCol="features", minDocFreq=5)
         self.normalizer = Normalizer(inputCol="features", outputCol="normalized_features")
-        self.pipeline = Pipeline(stages=[self.tokenizer, self.remover, self.hashing_tf, self.idf, self.normalizer])
+        self.pipeline = Pipeline(stages=[self.tokenizer, self.remover, self.ngram,
+                                         self.hashing_tf, self.idf,
+                                         self.normalizer])
         self.model = None
-        self.load_model()
 
     def fit_transform(self, dataframe):
         if self.model is not None:
             return self.transform(dataframe)
         self.model = self.pipeline.fit(dataframe)
-        self.model.save(self.model_path)
         return self.transform(dataframe)
 
-    def transform(self, dataframe):
-        if self.model is None:
-            self.load_model()
-        return self.model.transform(dataframe).drop('filtered_words', 'raw_features', 'words', 'features')
+    def fit(self, dataframe):
+        self.model = self.pipeline.fit(dataframe)
+        return self.model
 
-    def load_model(self):
-        self.model = PipelineModel.load(self.model_path)
+    def transform(self, dataframe):
+        return self.model.transform(dataframe).drop('filtered_words', 'lemmatized_words', 'ngrams',
+                                                    'raw_features', 'words', 'features')
+
+    def load_model(self, model_path='model'):
+        self.model = PipelineModel.load(model_path)
+
+    def save_model(self, model_path='model'):
+        self.model.write().overwrite().save(model_path)
 
 
 class ColumnCombiner:
     @staticmethod
-    def tto(movie, transform_column='combined_column'):
-        movie = movie.withColumn(transform_column,
-                                 F.concat(movie["title"], F.lit(" "), movie["tagline"], F.lit(" "), movie["overview"]))
-        return movie
-
-    @staticmethod
-    def combination_tto_genres_keywords_actors_directors(movie, genre_movie, genre, keyword_movie, keyword, cast, crew,
-                                                         person, transform_column='combined_column'):
-        joined_df = movie.join(genre_movie, movie["id"] == genre_movie["movie_id"], "left")
-
-        movie_genre = joined_df.join(genre, genre_movie["genre_id"] == genre["id"], "left")
-
-        movie_genre = (movie_genre
-                       .select(movie.id, movie.title, movie.tagline, movie.overview, genre.name)
-                       .groupBy(movie.id, movie.title, movie.tagline, movie.overview).agg(
-            F.collect_list(genre.name).alias("genres")))
-
-        movie_keyword = movie_genre.join(keyword_movie, movie["id"] == keyword_movie["movie_id"], "left")
-        movie_keyword = movie_keyword.join(keyword, movie_keyword["keyword_id"] == keyword["id"], "left")
-        movie_keyword = (movie_keyword
-                         .select(movie_genre.id, movie_genre.title, movie_genre.tagline, movie_genre.overview,
-                                 movie_genre.genres, keyword.name.alias("keyword_name"))
-                         .groupBy(movie_genre.id, movie_genre.title, movie_genre.tagline, movie_genre.overview,
-                                  movie_genre.genres).agg(F.collect_list('keyword_name').alias("keywords"))
-                         )
-
-        joined_data = crew.join(person, crew["person_id"] == person["id"], "left")
-        directors = joined_data.filter(F.col("job") == "Director").select(crew.movie_id, person.name, ).groupBy(
-            "movie_id").agg(
-            F.collect_list("name").alias("directors")
-        )
-
-        joined_data = cast.join(person, cast["person_id"] == person["id"], "left")
-        window_spec = Window.partitionBy("movie_id").orderBy(F.desc("popularity"))
-        top_actors = (joined_data.withColumn("rank", F.row_number().over(window_spec))
-                      .filter(F.col("rank") <= 3)
-                      .select(cast.movie_id, person.name.alias("actor_name")))
-
-        top_actors = (top_actors.
-        groupBy("movie_id").agg(
-            F.collect_list("actor_name").alias("actors")
-        ))
-
-        movie_actors = movie_keyword.join(top_actors, top_actors["movie_id"] == movie_keyword["id"], "left")
-        movie_actors_directors = movie_actors.join(directors, directors['movie_id'] == movie_actors['id'], 'left')
-
-        movie_actors_directors = movie_actors_directors.select('id', 'title', 'tagline', 'overview', 'genres',
-                                                               'keywords', 'actors', 'directors')
-        movie_actors_directors = (movie_actors_directors
-                                  .withColumn(transform_column,
-                                              F.concat_ws(" ", *[F.col(c) for c in movie_actors_directors.columns if
-                                                                 c != 'id'])))
-        return movie_actors_directors.select('id', transform_column)
-
-    @staticmethod
-    def combination_genres_keywords(movie, genre_movie, genre, keyword_movie, keyword,
-                                    transform_column='combined_column'):
-        joined_df = movie.join(genre_movie, movie["id"] == genre_movie["movie_id"], "left")
-
-        movie_genre = joined_df.join(genre, genre_movie["genre_id"] == genre["id"], "left")
-
-        movie_genre = (movie_genre
-                       .select(movie.id, genre.name)
-                       .groupBy(movie.id).agg(F.collect_list(genre.name).alias("genres")))
-
-        movie_keyword = movie_genre.join(keyword_movie, movie["id"] == keyword_movie["movie_id"], "left")
-        movie_keyword = movie_keyword.join(keyword, movie_keyword["keyword_id"] == keyword["id"], "left")
-        movie_keyword = (movie_keyword
-                         .select(movie_genre.id, movie_genre.genres, keyword.name.alias("keyword_name"))
-                         .groupBy(movie_genre.id, movie_genre.genres).agg(
-            F.collect_list('keyword_name').alias("keywords"))
-                         )
-
-        movie_genres_keywords = (movie_keyword
-                                 .withColumn(transform_column,
-                                             F.concat_ws(" ", *[F.col(c) for c in movie_keyword.columns if c != 'id'])))
-        return movie_genres_keywords.select('id', transform_column)
-
-    @staticmethod
-    def combination_tto_keywords_actors_directors(movie, keyword_movie, keyword, crew, cast, person,
-                                                  transform_column='combined_column'):
-        movie_keyword = movie.join(keyword_movie, movie["id"] == keyword_movie["movie_id"], "left")
-        movie_keyword = movie_keyword.join(keyword, movie_keyword["keyword_id"] == keyword["id"], "left")
-        movie_keyword = (movie_keyword
-                         .select(movie.id, movie.title, movie.tagline, movie.overview,
-                                 keyword.name.alias("keyword_name"))
-                         .groupBy(movie.id, movie.title, movie.tagline, movie.overview).agg(
-            F.collect_list('keyword_name').alias("keywords"))
-                         )
-
-        joined_data = crew.join(person, crew["person_id"] == person["id"], "left")
-        directors = joined_data.filter(F.col("job") == "Director").select(crew.movie_id, person.name, ).groupBy(
-            "movie_id").agg(
-            F.collect_list("name").alias("directors")
-        )
-
-        joined_data = cast.join(person, cast["person_id"] == person["id"], "left")
-        window_spec = Window.partitionBy("movie_id").orderBy(F.desc("popularity"))
-        top_actors = (joined_data.withColumn("rank", F.row_number().over(window_spec))
-                      .filter(F.col("rank") <= 3)
-                      .select(cast.movie_id, person.name.alias("actor_name")))
-        top_actors = (top_actors.
-        groupBy("movie_id").agg(
-            F.collect_list("actor_name").alias("actors")
-        ))
-
-        movie_actors = movie_keyword.join(top_actors, top_actors["movie_id"] == movie_keyword["id"], "left")
-        movie_actors_directors_keywords = movie_actors.join(directors, directors['movie_id'] == movie_actors['id'],
-                                                            'left')
-
-        movie_actors_directors_keywords = movie_actors_directors_keywords.select('id', 'title', 'tagline', 'overview',
-                                                                                 'keywords', 'actors', 'directors')
-
-        movie_actors_directors_keywords = (movie_actors_directors_keywords
-                                           .withColumn(transform_column,
-                                                       F.concat_ws(" ", *[F.col(c) for c in movie_keyword.columns if
-                                                                          c != 'id'])))
-
-        return movie_actors_directors_keywords.select('id', transform_column)
-
-    @staticmethod
     def combine_actor_character(actor, character):
-        return f"{actor} playing {character}"
+        return f"{actor} играет {character}"
 
     @staticmethod
-    def combination_tto_characters_actors_directors(movie, crew, cast, person, transform_column='combined_column'):
-        joined_data = crew.join(person, crew["person_id"] == person["id"], "left")
-        directors = joined_data.filter(F.col("job") == "Director")
-        directors = directors.withColumn("directors_text", F.concat_ws(" ", F.lit("director filma"), person.name))
-        directors = directors.select(crew.movie_id, 'directors_text').groupBy("movie_id").agg(
+    def combine_director(director):
+        return f"{director} режиссер"
+
+    @staticmethod
+    def combination_tto_characters_actors_directors(data, transform_column='combined_column'):
+        joined_data = data["crew"].join(data["person"], data["crew"]["person_id"] == data["person"]["id"], "left")
+        directors = joined_data.filter(F.col("job") == "Директор")
+        directors_udf = F.udf(ColumnCombiner.combine_director, StringType())
+        directors = directors.withColumn("directors_text", directors_udf(data["person"].name))
+        directors = directors.withColumn("directors_text",
+                                         F.concat_ws(" ", F.lit("director filma"), data["person"].name))
+        directors = directors.select(data["crew"].movie_id, 'directors_text').groupBy("movie_id").agg(
             F.collect_list("directors_text").alias("directors")
         )
-        joined_data = cast.join(person, cast["person_id"] == person["id"], "left")
+        joined_data = data["cast"].join(data["person"], data["cast"]["person_id"] == data["person"]["id"], "left")
         window_spec = Window.partitionBy("movie_id").orderBy(F.desc("popularity"))
         top_actors = (joined_data.withColumn("rank", F.row_number().over(window_spec))
                       .filter(F.col("rank") <= 3)
-                      .select(cast.movie_id, cast.character, person.name.alias("actor_name")))
+                      .select(data["cast"].movie_id, data["cast"].character, data["person"].name.alias("actor_name")))
         combine_actor_character_udf = F.udf(ColumnCombiner.combine_actor_character, StringType())
         top_actors = top_actors.withColumn("actor_character_pairs",
                                            combine_actor_character_udf(F.col("actor_name"), F.col("character")))
-        top_actors = (top_actors.
-        groupBy("movie_id").agg(
+        top_actors = (top_actors.groupBy("movie_id").agg(
             F.collect_list("actor_character_pairs").alias("actors")
         ))
 
-        movie_actors = movie.join(top_actors, top_actors["movie_id"] == movie["id"], "left")
+        movie_actors = data["movie"].join(top_actors, top_actors["movie_id"] == data["movie"]["id"], "left")
         movie_actors_directors = movie_actors.join(directors, directors['movie_id'] == movie_actors['id'], 'left')
 
         movie_actors_directors = movie_actors_directors.select('id', 'title', 'tagline', 'overview', 'actors',
@@ -193,6 +112,50 @@ class ColumnCombiner:
                                                                  c != 'id'])))
 
         return movie_actors_directors.select('id', transform_column)
+
+    @staticmethod
+    def combination_tto_characters_actors_directors_keywords(data,
+                                                             transform_column='combined_column'):
+        joined_data = data["crew"].join(data["person"], data["crew"]["person_id"] == data["person"]["id"], "left")
+        directors = joined_data.filter(F.col("job") == "Директор")
+        directors = directors.withColumn("directors_text",
+                                         F.concat_ws(" ", F.lit("director filma"), data["person"].name))
+        directors = directors.select(data["crew"].movie_id, 'directors_text').groupBy("movie_id").agg(
+            F.collect_list("directors_text").alias("directors")
+        )
+        joined_data = data["cast"].join(data["person"], data["cast"]["person_id"] == data["person"]["id"], "left")
+        window_spec = Window.partitionBy("movie_id").orderBy(F.desc("popularity"))
+        top_actors = (joined_data.withColumn("rank", F.row_number().over(window_spec))
+                      .filter(F.col("rank") <= 3)
+                      .select(data["cast"].movie_id, data["cast"].character, data["person"].name.alias("actor_name")))
+        combine_actor_character_udf = F.udf(ColumnCombiner.combine_actor_character, StringType())
+        top_actors = top_actors.withColumn("actor_character_pairs",
+                                           combine_actor_character_udf(F.col("actor_name"), F.col("character")))
+        top_actors = (top_actors.groupBy("movie_id").agg(
+            F.collect_list("actor_character_pairs").alias("actors")
+        ))
+
+        joined_data = data["keyword_movie"].join(data["keyword"],
+                                                 data["keyword_movie"]["keyword_id"] == data["keyword"]["id"], "left")
+        keywords_list = (joined_data.groupBy("movie_id").agg(
+            F.collect_list("keyword_id").alias("keywords")
+        ))
+
+        movie_actors = data["movie"].join(top_actors, top_actors["movie_id"] == data["movie"]["id"], "left")
+        movie_actors_directors = movie_actors.join(directors, directors['movie_id'] == movie_actors['id'], 'left')
+        movie_actors_directors_keywords = movie_actors_directors.join(keywords_list, keywords_list['movie_id'] ==
+                                                                      movie_actors_directors['id'], 'left')
+        movie_actors_directors_keywords = movie_actors_directors_keywords.select('id', 'title', 'tagline', 'overview',
+                                                                                 'actors',
+                                                                                 'directors', 'keywords')
+
+        movie_actors_directors_keywords = (movie_actors_directors_keywords
+                                           .withColumn(transform_column,
+                                                       F.concat_ws(" ", *[F.col(c) for c in
+                                                                          movie_actors_directors_keywords.columns if
+                                                                          c != 'id'])))
+
+        return movie_actors_directors_keywords.select('id', transform_column)
 
 
 class MatrixSim:

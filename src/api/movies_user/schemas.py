@@ -15,11 +15,11 @@ class MovieUserRatingInput(MovieUserInput):
 
 class MovieUserReviewInput(MovieUserInput):
     title: str
-    review: str
     type_review: TypeReview
+    review: str
 
 
 class ReviewUpdate(MovieUserInput):
     title: Optional[str] = None
-    review: Optional[str] = None
     type_review: Optional[TypeReview] = None
+    review: Optional[str] = None

@@ -1,6 +1,8 @@
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 import time
+
+
 class MyMiddleware(BaseHTTPMiddleware):
     def __init__(
             self,

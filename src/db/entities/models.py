@@ -11,7 +11,7 @@ if TYPE_CHECKING:
                                            MovieWatched, MovieBeWatching, HistorySearchMovieResult,
                                            HistoryPopularityBasedResult, HistoryContentBasedResult,
                                            HistoryContentBasedInput, Review, MovieNegative,
-                                           MovieEvaluated)
+                                           MovieEvaluated, HistoryContentBasedMovieResult)
 
 
 class Person(Base):
@@ -22,7 +22,7 @@ class Person(Base):
         CheckConstraint(func.length('known_for_department') <= 64, name='known_for_department_length_limit'),
     )
     id: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
-    name: Mapped[str] = mapped_column(index=True)
+    name: Mapped[str] = mapped_column()
     popularity: Mapped[float]
     known_for_department: Mapped[Optional[str]]
     movies_crew: Mapped[list['Crew']] = relationship(back_populates='person')
@@ -43,11 +43,11 @@ class Movie(Base):
     overview: Mapped[Optional[str]] = mapped_column(index=True)
     poster_path: Mapped[Optional[str]]
     original_language: Mapped[Optional[str]]
-    release_date: Mapped[date] = mapped_column(index=True)
+    release_date: Mapped[date] = mapped_column()
     runtime: Mapped[Optional[int]] = mapped_column(nullable=False)
     popularity: Mapped[float] = mapped_column(nullable=False)
-    vote_average: Mapped[float] = mapped_column(index=True)
-    vote_count: Mapped[int] = mapped_column(index=True)
+    vote_average: Mapped[float] = mapped_column()
+    vote_count: Mapped[int] = mapped_column()
     crew: Mapped[list['Crew']] = relationship(back_populates='movie')
     cast: Mapped[list['Cast']] = relationship(back_populates='movie')
     keywords: Mapped[list['KeywordMovie']] = relationship(back_populates='movie')
@@ -57,6 +57,7 @@ class Movie(Base):
     histories_content_res: Mapped[list['HistoryContentBasedResult']] = relationship(back_populates='movie')
     histories_search: Mapped[list['HistorySearchMovieResult']] = relationship(back_populates='movie')
     histories_pop_res: Mapped[list['HistoryPopularityBasedResult']] = relationship(back_populates='movie')
+    histories_content_movie_res: Mapped[list['HistoryContentBasedMovieResult']] = relationship(back_populates='movie')
     users_watched: Mapped[list["MovieWatched"]] = relationship(back_populates='movie')
     users_be_watching: Mapped[list["MovieBeWatching"]] = relationship(back_populates='movie')
     users_negative: Mapped[list["MovieNegative"]] = relationship(back_populates='movie')
@@ -99,3 +100,11 @@ class HistoryPopularityBased(Base):
     id: Mapped[int] = mapped_column(nullable=False, primary_key=True, unique=True, index=True)
     datetime_added: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
     movies_history_res: Mapped[list['HistoryPopularityBasedResult']] = relationship(back_populates='history')
+
+
+class HistoryContentBasedMovie(Base):
+    __tablename__ = 'HistoryContentBasedMovie'
+    movie_id_input: Mapped[int] = mapped_column(ForeignKey("Movie.id", ondelete='RESTRICT'), primary_key=True,
+                                                unique=True, index=True)
+    datetime_added: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
+    movies_history_res: Mapped[list['HistoryContentBasedMovieResult']] = relationship(back_populates='history')

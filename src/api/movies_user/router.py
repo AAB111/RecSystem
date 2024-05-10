@@ -1,22 +1,27 @@
-from fastapi import APIRouter
-from typing import List
-from src.api.schemas import MovieRelDTO
+from fastapi import APIRouter, Depends
+from src.api.schemas import MovieRelDTO, MovieRelEvalDTO, MovieRelReviewDTO, MovieUserRelDTO
 from src.api.movies_user.schemas import MovieUserInput, ReviewUpdate, MovieUserReviewInput, MovieUserRatingInput
+from src.api.utils import Paginator
+from src.db.associative.models import MovieEvaluated, MovieWatched, MovieBeWatching, MovieNegative, Review
 from src.services.services import UserMovieService
 from fastapi import status
 from fastapi.responses import JSONResponse
-from uuid import UUID
 
-router = APIRouter(
-    prefix="/user/movies",
+router_get = APIRouter(
+    prefix="/user/{user_id}/movie",
+    tags=["user_movies"],
+)
+router_post_del_patch = APIRouter(
+    prefix="/user/movie",
     tags=["user_movies"],
 )
 
 
-@router.post("/watched")
+@router_post_del_patch.post("/watched")
 async def add_watched_movie(params: MovieUserInput):
     try:
-        status_res = await UserMovieService().add_movie_user(**params.model_dump(), relationship_name='movies_watched')
+        status_res = await UserMovieService().add_movie_user(**params.model_dump(),
+                                                             relationship_name='movies_watched')
         if status_res['status'] == 'success':
             return JSONResponse(status_code=status.HTTP_200_OK, content="Watched add")
         else:
@@ -26,24 +31,26 @@ async def add_watched_movie(params: MovieUserInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.get("/watched")
-async def get_movies_watched(user_id: int):
+@router_get.get("/watched")
+async def get_movies_watched(user_id: int, paginator_params: Paginator = Depends(Paginator)):
     try:
-        result = await UserMovieService().get_movies_user(user_id=user_id, relationship_name='movies_watched')
+        result = await UserMovieService().get_movies_user(user_id=user_id,
+                                                          associated_table=MovieWatched,
+                                                          paginator_params=paginator_params)
         if result['status'] == 'success':
             output_movies = [
-                MovieRelDTO.model_validate(movie, from_attributes=True)
+                MovieUserRelDTO.model_validate(movie, from_attributes=True)
                 for movie in result['data']
             ]
-            print('output_movies', output_movies)
             return output_movies
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
     except Exception as e:
         print('Error', e)
-        return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
+        return e
+        # return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.delete("/watched")
+@router_post_del_patch.delete("/watched")
 async def delete_watched_movie(params: MovieUserInput):
     try:
         status_res = await UserMovieService().delete_movie_user(**params.model_dump(),
@@ -58,7 +65,7 @@ async def delete_watched_movie(params: MovieUserInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.post("/be_watching")
+@router_post_del_patch.post("/be_watching")
 async def add_be_watching_movie(params: MovieUserInput):
     try:
         status_res = await UserMovieService().add_movie_user(**params.model_dump(),
@@ -72,13 +79,15 @@ async def add_be_watching_movie(params: MovieUserInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.get("/be_watching")
-async def get_movies_watched(user_id: int):
+@router_get.get("/be_watching")
+async def get_movies_watched(user_id: int, paginator_params: Paginator = Depends(Paginator)):
     try:
-        result = await UserMovieService().get_movies_user(user_id=user_id, relationship_name='movies_be_watching')
+        result = await UserMovieService().get_movies_user(user_id=user_id,
+                                                          associated_table=MovieBeWatching,
+                                                          paginator_params=paginator_params)
         if result['status'] == 'success':
             output_movies = [
-                MovieRelDTO.model_validate(movie, from_attributes=True)
+                MovieUserRelDTO.model_validate(movie, from_attributes=True)
                 for movie in result['data']
             ]
             return output_movies
@@ -88,7 +97,7 @@ async def get_movies_watched(user_id: int):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.delete("/be_watching")
+@router_post_del_patch.delete("/be_watching")
 async def delete_be_watching_movie(params: MovieUserInput):
     try:
         status_res = await UserMovieService().delete_movie_user(**params.model_dump(),
@@ -103,10 +112,11 @@ async def delete_be_watching_movie(params: MovieUserInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.post("/negative")
+@router_post_del_patch.post("/negative")
 async def add_negative_movie(params: MovieUserInput):
     try:
-        status_res = await UserMovieService().add_movie_user(**params.model_dump(), relationship_name='movies_negative')
+        status_res = await UserMovieService().add_movie_user(**params.model_dump(),
+                                                             relationship_name='movies_negative')
         if status_res['status'] == 'success':
             return JSONResponse(status_code=status.HTTP_200_OK, content="Negative add")
         else:
@@ -116,23 +126,25 @@ async def add_negative_movie(params: MovieUserInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.get("/negative")
-async def get_movies_watched(user_id: int):
+@router_get.get("/negative")
+async def get_movies_watched(user_id: int, paginator_params: Paginator = Depends(Paginator)):
     try:
-        result = await UserMovieService().get_movies_user(user_id=user_id, relationship_name='movies_negative')
+        result = await UserMovieService().get_movies_user(user_id=user_id,
+                                                          associated_table=MovieNegative,
+                                                          paginator_params=paginator_params)
         if result['status'] == 'success':
             output_movies = [
-                MovieRelDTO.model_validate(movie, from_attributes=True)
+                MovieUserRelDTO.model_validate(movie, from_attributes=True)
                 for movie in result['data']
             ]
             return output_movies
         return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")
     except Exception as e:
-        print('Error', e)
+        print('ERROR', e)
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.delete("/negative")
+@router_post_del_patch.delete("/negative")
 async def delete_negative_movie(params: MovieUserInput):
     try:
         status_res = await UserMovieService().delete_movie_user(**params.model_dump(),
@@ -147,7 +159,7 @@ async def delete_negative_movie(params: MovieUserInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.post("/evaluated")
+@router_post_del_patch.post("/evaluated")
 async def add_evaluated_movie(params: MovieUserRatingInput):
     try:
         status_res = await UserMovieService().add_movie_user(user_id=params.user_id,
@@ -163,13 +175,15 @@ async def add_evaluated_movie(params: MovieUserRatingInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.get("/evaluated", response_model=List[MovieRelDTO])
-async def get_movies_watched(user_id: int):
+@router_get.get("/evaluated")
+async def get_movies_watched(user_id: int, paginator_params: Paginator = Depends(Paginator)):
     try:
-        result = await UserMovieService().get_movies_user(user_id=user_id, relationship_name='movies_evaluated')
+        result = await UserMovieService().get_movies_user(user_id=user_id,
+                                                          associated_table=MovieEvaluated,
+                                                          paginator_params=paginator_params)
         if result['status'] == 'success':
             output_movies = [
-                MovieRelDTO.model_validate(movie, from_attributes=True)
+                MovieRelEvalDTO.model_validate(movie, from_attributes=True)
                 for movie in result['data']
             ]
             return output_movies
@@ -179,7 +193,7 @@ async def get_movies_watched(user_id: int):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.delete("/evaluated")
+@router_post_del_patch.delete("/evaluated")
 async def delete_evaluated_movie(params: MovieUserInput):
     try:
         status_res = await UserMovieService().delete_movie_user(**params.model_dump(),
@@ -194,7 +208,7 @@ async def delete_evaluated_movie(params: MovieUserInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.patch("/evaluated")
+@router_post_del_patch.patch("/evaluated")
 async def update_evaluated_movie(params: MovieUserRatingInput):
     try:
         values_to_update = {}
@@ -218,12 +232,12 @@ async def update_evaluated_movie(params: MovieUserRatingInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.post("/review")
+@router_post_del_patch.post("/review")
 async def add_review_movie(params: MovieUserReviewInput):
     try:
         status_res = await UserMovieService().add_movie_user(user_id=params.user_id,
                                                              movie_id=params.movie_id,
-                                                             relationship_name='reviews',
+                                                             relationship_name='movies_reviews',
                                                              title=params.title,
                                                              review=params.review,
                                                              type_review=params.type_review)
@@ -236,13 +250,15 @@ async def add_review_movie(params: MovieUserReviewInput):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.get("/review", response_model=List[MovieRelDTO])
-async def get_movies_reviews(user_id: int):
+@router_get.get("/review")
+async def get_movies_reviews(user_id: int, paginator_params: Paginator = Depends(Paginator)):
     try:
-        result = await UserMovieService().get_movies_user(user_id=user_id, relationship_name='reviews')
+        result = await UserMovieService().get_movies_user(user_id=user_id,
+                                                          associated_table=Review,
+                                                          paginator_params=paginator_params)
         if result['status'] == 'success':
             output_movies = [
-                MovieRelDTO.model_validate(movie, from_attributes=True)
+                MovieRelReviewDTO.model_validate(movie, from_attributes=True)
                 for movie in result['data']
             ]
             return output_movies
@@ -252,7 +268,7 @@ async def get_movies_reviews(user_id: int):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.patch('/review')
+@router_post_del_patch.patch('/review')
 async def update_review_movie(params: ReviewUpdate):
     try:
         values_to_update = {}
@@ -263,7 +279,7 @@ async def update_review_movie(params: ReviewUpdate):
         if len(values_to_update) > 0:
             status_res = await UserMovieService().update_movie_user(user_id=params.user_id,
                                                                     movie_id=params.movie_id,
-                                                                    relationship_name='reviews',
+                                                                    relationship_name='movies_reviews',
                                                                     **values_to_update)
             if status_res['status'] == 'success':
                 if status_res['updated_rows'] == 0:
@@ -276,10 +292,11 @@ async def update_review_movie(params: ReviewUpdate):
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.delete('/review')
+@router_post_del_patch.delete('/review')
 async def delete_review_movie(params: MovieUserInput):
     try:
-        status_res = await UserMovieService().delete_movie_user(**params.model_dump(), relationship_name='reviews')
+        status_res = await UserMovieService().delete_movie_user(**params.model_dump(),
+                                                                relationship_name='movies_reviews')
         if status_res['status'] == 'success':
             if status_res['deleted_rows'] == 0:
                 return JSONResponse(status_code=status.HTTP_404_NOT_FOUND, content="Not found")

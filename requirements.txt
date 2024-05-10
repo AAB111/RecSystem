@@ -142,3 +142,6 @@ zope.hookable==6.0
 zope.interface==6.2
 zope.lifecycleevent==5.0
 zope.proxy==5.2
+uvicorn~=0.29.0
+APScheduler~=3.10.4
+pymystem3~=0.2.0

@@ -1,13 +1,16 @@
 from uuid import UUID
 from pydantic import BaseModel
-from datetime import date
+from datetime import date, datetime
+from typing import Optional
+
+from src.db.types.types import Ratings, TypeReview
 
 
 class MoviePostDTO(BaseModel):
     id: int
     title: str
-    tagline: str
-    overview: str
+    tagline: Optional[str]
+    overview: Optional[str]
 
 
 class Genre(BaseModel):
@@ -37,6 +40,28 @@ class MovieGetDTO(MoviePostDTO):
 class MovieRelDTO(MovieGetDTO):
     genres: list['GenreMovieGetDTO']
     companies: list[CompanyMovieGetDTO]
+
+
+class MovieRelEvalDTO(BaseModel):
+    movie_id: int
+    rating: Ratings
+    datetime_added: datetime
+    movie: MovieRelDTO
+
+
+class MovieRelReviewDTO(BaseModel):
+    movie_id: int
+    title: str
+    type_review: TypeReview
+    review: str
+    datetime_added: datetime
+    movie: MovieRelDTO
+
+
+class MovieUserRelDTO(BaseModel):
+    movie_id: int
+    datetime_added: datetime
+    movie: MovieRelDTO
 
 
 class ContentForUserInput(BaseModel):
