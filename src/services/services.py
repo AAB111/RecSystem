@@ -123,14 +123,16 @@ class Recommender:
             except Exception as e:
                 print(e)
 
-    async def content_based_recommend(self, top_n_for_movie=5):
+    async def content_based_recommend(self, top_n_for_movie=10):
         async with async_session_maker() as session:
             try:
                 content_based = ContentBasedAuto(self.base_model, self.data_storage)
                 result_recommendations = content_based.recommend_auto(top_n_for_movie)
-                print(result_recommendations)
                 for history in result_recommendations:
-                    await HistoryContentBasedDAL(session).add_history_content_based(history[0], history[1], history[2])
+                    print(history[0].show())
+                    print(history[1])
+                    print(history[2].show())
+                    await HistoryContentBasedDAL(session).add_history_content_based(*history)
                 print("Done CONTENT!")
             except Exception as e:
                 print(e)

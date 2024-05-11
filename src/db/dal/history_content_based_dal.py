@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pyspark.sql import DataFrame
 import pyspark.sql.functions as F
 from src.api.utils import Paginator
-from src.db.associative.models import HistoryContentBasedResult
+from src.db.associative.models import HistoryContentBasedResult, HistoryContentBasedInput
 from src.db.dal.movie_dal import MovieDAL
 from src.db.entities.models import HistoryContentBased
 from sqlalchemy import select
@@ -28,7 +28,7 @@ class HistoryContentBasedDAL:
             movie_id_res_df = movie_id_res_df.withColumn("history_id", F.lit(history_id))
             movie_id_res_df = movie_id_res_df.collect()
             for movie in movie_id_input_df:
-                history_input = HistoryContentBasedResult(
+                history_input = HistoryContentBasedInput(
                     movie_id=movie['movie_id'],
                     history_id=movie['history_id']
                 )
