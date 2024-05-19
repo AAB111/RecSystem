@@ -162,8 +162,7 @@ class SearchMovieService:
         df = self.spark_init.get_spark().createDataFrame(data, [self.base_model.transform_column])
         result['sim_movies'] = search.search(df, paginator_params)
 
-    @check_user_existence
-    async def search(self, overview, user_id, pagination_params: Paginator):
+    async def search(self, overview, pagination_params: Paginator):
         async with async_session_maker() as session:
             try:
                 hs = HistorySearchMovieDAL(session)
@@ -172,7 +171,7 @@ class SearchMovieService:
                     data = [(overview,)]
                     df = self.spark_init.get_spark().createDataFrame(data, [self.base_model.transform_column])
                     sim_movies = search.search(df, pagination_params)
-                    await hs.add_history_search_movie(input_search=overview, user_id=user_id,
+                    await hs.add_history_search_movie(input_search=overview,
                                                       movie_id_res_list=sim_movies)
                 result = await hs.get_history_search_movie_by_overview(overview, paginator_params=pagination_params)
                 return result

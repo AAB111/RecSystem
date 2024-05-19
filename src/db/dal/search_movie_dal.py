@@ -15,11 +15,10 @@ class HistorySearchMovieDAL:
     def __init__(self, db_session: AsyncSession):
         self.session = db_session
 
-    async def add_history_search_movie(self, input_search: str, user_id: int, movie_id_res_list: DataFrame):
+    async def add_history_search_movie(self, input_search: str, movie_id_res_list: DataFrame):
         try:
             new_history = HistorySearchMovie(
                 input_search=input_search,
-                user_id=user_id,
             )
             self.session.add(new_history)
             await self.session.flush()

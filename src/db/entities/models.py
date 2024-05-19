@@ -4,7 +4,6 @@ from typing import Optional, TYPE_CHECKING
 from datetime import date, datetime
 from src.db.models import Base
 import uuid
-from fastapi_users.db import SQLAlchemyBaseUserTable
 
 if TYPE_CHECKING:
     from src.db.associative.models import (KeywordMovie, GenreMovie, CompanyMovie, Cast, Crew,
@@ -82,7 +81,6 @@ class HistorySearchMovie(Base):
     id: Mapped[int] = mapped_column(primary_key=True, unique=True, index=True)
     input_search: Mapped[str] = mapped_column(nullable=False, index=True)
     datetime_added: Mapped[datetime] = mapped_column(server_default=text("TIMEZONE('utc',now())"))
-    user_id: Mapped[int] = mapped_column(ForeignKey('User.id', ondelete='RESTRICT'), index=True)
     movies_history_res: Mapped[list['HistorySearchMovieResult']] = relationship(back_populates='history')
 
 
