@@ -312,7 +312,7 @@ class MovieService:
     async def get_movies_by_title(title, paginator_params: Paginator):
         async with async_session_maker() as session:
             try:
-                result = await MovieDAL(session).get_movie_by_title(title, paginator_params)
+                result = await MovieDAL(session).get_movies_by_title(title, paginator_params)
                 return result
             except Exception as e:
                 print(e)
@@ -330,7 +330,7 @@ class MovieService:
     async def get_movie_by_id(movie_id):
         async with async_session_maker() as session:
             try:
-                result = await MovieDAL(session).get_movies_by_id(movie_id)
+                result = await MovieDAL(session).get_movie_by_id(movie_id)
                 return result
             except Exception as e:
                 print(e)

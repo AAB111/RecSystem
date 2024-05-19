@@ -44,7 +44,7 @@ class MovieDAL:
             print('Error', e)
             return {'status': 'error', 'data': None}
 
-    async def get_movie_by_title(self, title: str, paginator_params: Paginator):
+    async def get_movies_by_title(self, title: str, paginator_params: Paginator):
         try:
             offset = (paginator_params.page - 1) * paginator_params.n
             movie = await self.session.execute(
@@ -61,7 +61,7 @@ class MovieDAL:
             print('ERROR', e)
             return {'status': 'error', 'data': None}
 
-    async def get_movies_by_id(self, movie_id: int):
+    async def get_movie_by_id(self, movie_id: int):
         try:
             movie = await self.session.execute(
                 select(Movie)
