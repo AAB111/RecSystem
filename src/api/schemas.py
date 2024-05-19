@@ -1,4 +1,3 @@
-from uuid import UUID
 from pydantic import BaseModel
 from datetime import date, datetime
 from typing import Optional
@@ -34,7 +33,7 @@ class CompanyMovieGetDTO(BaseModel):
 class MovieGetDTO(MoviePostDTO):
     vote_average: float
     release_date: date
-    poster_path: str
+    poster_path: Optional[str]
 
 
 class MovieRelDTO(MovieGetDTO):
@@ -63,6 +62,3 @@ class MovieUserRelDTO(BaseModel):
     datetime_added: datetime
     movie: MovieRelDTO
 
-
-class ContentForUserInput(BaseModel):
-    user_id: int

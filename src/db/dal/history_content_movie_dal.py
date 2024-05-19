@@ -24,7 +24,6 @@ class HistoryContentBasedMovieDAL:
             if history is None:
                 return False
             result = history.movies_history_res
-            print(len(result))
             return len(result) > 0
         except Exception as e:
             print('Error', e)

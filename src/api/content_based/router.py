@@ -1,9 +1,8 @@
 from fastapi import APIRouter, Depends
 from typing import List
-from src.api.content_based.schemas import ContentBasedInput
 from src.api.schemas import MovieRelDTO
 from src.api.utils import Paginator
-from src.services.services import ContentBasedService
+from src.services.services import ContentBasedService, ContentBasedMovieService
 from fastapi import status
 from fastapi.responses import JSONResponse
 from init_model import base_model_content, data_storage_content, spark_init
@@ -32,11 +31,11 @@ async def get_history_content_based(user_id: int, paginator: Paginator = Depends
         return JSONResponse(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, content='Internal server error')
 
 
-@router.post("/")
-async def content_based_by_id(params: ContentBasedInput, paginator: Paginator = Depends(Paginator)):
+@router.get("/movie/")
+async def content_based_by_id(movie_id: int, paginator: Paginator = Depends(Paginator)):
     try:
-        result = (await (ContentBasedService(base_model_content, data_storage_content, spark_init)
-                         .get_content_based_for_movie(**params.model_dump(), paginator_params=paginator)))
+        result = (await (ContentBasedMovieService(base_model_content, data_storage_content, spark_init)
+                         .get_content_based_for_movie(movie_id, paginator_params=paginator)))
         if (result['data'] is not None) & (result['status'] == 'success'):
             output_movies = [
                 MovieRelDTO.model_validate(movie, from_attributes=True)

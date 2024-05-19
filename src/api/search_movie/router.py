@@ -3,7 +3,6 @@ from src.api.schemas import MovieRelDTO
 from init_model import spark_init, base_model_search, data_storage_search
 from src.api.utils import Paginator
 from src.services.services import SearchMovieService
-from src.api.search_movie.schemas import SearchMovieInput
 from fastapi import status
 from fastapi.responses import JSONResponse
 
@@ -13,13 +12,13 @@ router = APIRouter(
 )
 
 
-@router.post("/")
-async def search_movie(params: SearchMovieInput, paginator: Paginator = Depends()):
+@router.get("/")
+async def search_movie(overview: str, paginator: Paginator = Depends()):
     try:
-        if params.overview.isspace() or params.overview == "":
+        if overview.isspace() or overview == "":
             return JSONResponse(status_code=status.HTTP_400_BAD_REQUEST, content="Not valid data")
         search_movie_service = SearchMovieService(base_model_search, spark_init, data_storage_search)
-        result = await search_movie_service.search(**params.model_dump(), pagination_params=paginator)
+        result = await search_movie_service.search(overview, pagination_params=paginator)
         if (result['data'] is not None) & (result['status'] == 'success'):
             output_movies = [
                 MovieRelDTO.model_validate(movie, from_attributes=True)

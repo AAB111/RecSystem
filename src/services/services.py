@@ -210,6 +210,13 @@ class ContentBasedService:
                 print(e)
                 return {'status': 'error', 'data': None}
 
+
+class ContentBasedMovieService:
+    def __init__(self, base_model: BaseModel, data_storage: DataStorage, spark_initializer: SparkInitializer):
+        self.base_model = base_model
+        self.data_storage = data_storage
+        self.spark_init = spark_initializer
+
     async def get_content_based_for_movie(self, movie_id: int, paginator_params: Paginator):
         async with async_session_maker() as session:
             try:
@@ -282,10 +289,10 @@ class UserMovieService:
 
 class UserService:
     @staticmethod
-    async def create_user(user):
+    async def create_user(user_id: int):
         async with async_session_maker() as session:
             try:
-                result = await UserDAL(session).add_user(**user.model_dump())
+                result = await UserDAL(session).add_user(user_id)
                 return result
             except Exception as e:
                 print(e)
